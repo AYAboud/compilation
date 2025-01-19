@@ -1,0 +1,122 @@
+options {
+  STATIC = false;
+}
+
+PARSER_BEGIN(XmlParser)
+
+//package parseurjava;  // Ajout de la déclaration du package
+
+public class XmlParser {
+  public static void main(String[] args) throws ParseException {
+    System.out.println("Enter XML input:");
+    XmlParser parser = new XmlParser(System.in);
+    parser.document();
+    System.out.println("XML parsed successfully!");
+  }
+}
+
+PARSER_END(XmlParser)
+
+// --- SKIP : Ignorer les espaces blancs ---
+SKIP : {
+  < WHITESPACE: (" " | "\t" | "\n" | "\r")+ >
+}
+
+// --- TOKENS : Définir les composants lexicaux ---
+TOKEN : {
+  < OPEN_TAG: "<" > |
+  < CLOSE_TAG: ">" > |
+  < SLASH: "/" > |
+  < EQUAL: "=" > |
+  < QUOTE: "\"" > |
+  < TEXT: (~["<", ">"])+ > // Contenu texte
+}
+
+TOKEN : {
+  < NAME: (["a"-"z", "A"-"Z", "0"-"9", "-", "_", ":"])+ > // Noms des balises/attributs
+}
+
+// --- Analyse syntaxique ---
+// Début de l'analyse
+void document() : {} {
+    element()
+}
+
+// Éléments XML
+void element() : {
+    String tagName;
+    Token endTag;
+}
+{
+    <OPEN_TAG> tagName = tag()
+    (
+      attribute() // Gestion d'un ou plusieurs attributs
+    )*
+    <CLOSE_TAG>
+    
+      content(tagName) // Appel explicite au contenu
+      // Cas où aucun contenu n'est présent
+    
+    [
+      <OPEN_TAG> <SLASH> endTag = tag() <CLOSE_TAG>
+      {
+        if (!endTag.image.equals(tagName)) {
+          throw new ParseException("Balise fermante invalide : </" + endTag.image + "> attendu </" + tagName + ">");
+        }
+      }
+    ]
+}
+
+
+
+// Balises
+/*
+String tag() : {
+    String name;
+}
+{
+    <NAME> { name = token.image; }
+    { return name; }
+}*/
+Token tag() : { 
+    Token token;
+}
+{
+    <NAME> { token = jj_consume_token(NAME); }
+    { return token; }  // Retourne un Token au lieu d'une String
+}
+
+
+// Attributs
+void attribute() : {
+    String attrName;
+    String attrValue;
+}
+{
+    attrName = tag() <EQUAL> attrValue = quotedValue()
+    { System.out.println("Attribute: " + attrName + " = " + attrValue); }
+}
+
+// Valeur entre guillemets
+String quotedValue() : {
+    String value;
+}
+{
+    <QUOTE> value = text() <QUOTE>
+    { return value; }
+}
+
+// Contenu de l'élément
+void content(String tagName) : {}
+{
+    (element() | text())*
+}
+
+// Texte entre les balises
+String text() : {
+    String value;
+}
+{
+    <TEXT> { value = token.image; }
+    { return value; }
+}

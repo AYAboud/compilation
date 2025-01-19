@@ -1,0 +1,106 @@
+options { 
+  STATIC = false;
+}
+
+PARSER_BEGIN(JsonParser)
+
+package parseurjava;  // Ajout de la déclaration du package
+
+public class JsonParser {
+  public static void main(String[] args) throws ParseException {
+    System.out.println("Enter JSON input:");
+    JsonParser parser = new JsonParser(System.in);
+    parser.JSON();
+    System.out.println("JSON parsed successfully!");
+  }
+}
+
+PARSER_END(JsonParser)
+
+SKIP : {
+  < WHITESPACE: " " | "\t" | "\n" | "\r" >
+}
+
+TOKEN : {
+  < LBRACE: "{" > |
+  < RBRACE: "}" > |
+  < LBRACKET: "[" > |
+  < RBRACKET: "]" > |
+  < COLON: ":" > |
+  < COMMA: "," > |
+  < TRUE: "true" > |
+  < FALSE: "false" > |
+  < NULL: "null" >
+}
+
+TOKEN : {
+  < DIGIT: ["0"-"9"] > |
+  < NON_ZERO_DIGIT: ["1"-"9"] > |
+  < NUMBER: ("-")? ("0" | <NON_ZERO_DIGIT> (<DIGIT>)*) ("." (<DIGIT>)+)? (["e","E"] (["+","-"])? (<DIGIT>)+)? >
+}
+
+TOKEN : {
+  < STRING: "\"" (~["\"","\\"] | "\\" ["n","t","r","\"","\\","/","b","f"])* "\"" >
+}
+
+void JSON() : {}
+{
+  OBJECT() | ARRAY()
+}
+
+Map<String, Object> OBJECT() : {
+    Map<String, Object> map = new LinkedHashMap<>();
+    String key;
+    Object value;
+}
+{
+    <LBRACE>
+    [ key = STRING() <COLON> value = VALUE() { map.put(key, value); } 
+      ( <COMMA> key = STRING() <COLON> value = VALUE() { map.put(key, value); } )* ]
+    <RBRACE>
+    { return map; }
+}
+
+
+void PAIR() : {}
+{
+  STRING() <COLON> VALUE()
+}
+
+List<Object> ARRAY() : {
+    List<Object> list = new ArrayList<>();
+    Object value;
+}
+{
+    <LBRACKET>
+    [ value = VALUE() { list.add(value); } 
+      ( <COMMA> value = VALUE() { list.add(value); } )* ]
+    <RBRACKET>
+    { return list; }
+}
+
+
+Object VALUE() : {
+    Object value;
+}
+{
+    value = STRING() { return value; }
+|   value = NUMBER() { return value; }
+|   value = OBJECT() { return value; }
+|   value = ARRAY() { return value; }
+|   <TRUE> { return true; }
+|   <FALSE> { return false; }
+|   <NULL> { return null; }
+}
+
+
+String STRING() : {}
+{
+    <STRING> { return token.image.substring(1, token.image.length() - 1); }
+}
+
+
+double NUMBER() : {}
+{
+    <NUMBER> { return Double.parseDouble(token.image); }
+}
